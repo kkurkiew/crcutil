@@ -29,6 +29,9 @@ import java.util.zip.CRC32;
 public class CrcUtil {
 
     public static void main(String[] args) {
+        int i;
+        CRC32 crc32;
+        byte[] buffer;
         FileInputStream fin;
 
         if (args.length != 1) {
@@ -52,8 +55,13 @@ public class CrcUtil {
         }
 
         try {
-            CRC32 crc32 = new CRC32();
-            crc32.update(fin.readAllBytes());
+            crc32 = new CRC32();
+            buffer = new byte[32768];  // 32 kilobytes
+            i = fin.read(buffer);
+            while (i != -1) {
+                crc32.update(buffer, 0, i);
+                i = fin.read(buffer);
+            }
             System.out.printf("""
                               CRC32 checksum of %s:
                               %x
