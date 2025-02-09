@@ -48,10 +48,15 @@ public class CrcUtil {
      * Entry point
      */
     public static void main(String[] args) {
-        int i;
-        CRC32 crc32;
-        byte[] buffer;
-        FileInputStream fin;
+        int     i;
+        byte[]  buf;
+        CRC32   crc32;
+        String  InFile  =  "";
+        int     BufferSize  =  -1;
+
+        FileInputStream  fin;
+        boolean          showupdates  =  false;
+
 
         if (args.length == 0) {
             usage(false);
@@ -94,20 +99,33 @@ public class CrcUtil {
                                  
                                  """);
                 usage(false);
+                return;
             } else if (i + 2 == args.length) {  // java CrcUtil.java -showupdates InFile
-                showUpdates(DEFAULT_BUFFER_SIZE, args[i+1]);
+                showupdates = true;
+                BufferSize = DEFAULT_BUFFER_SIZE;
+                InFile = args[i+1];
             } else {  // java CrcUtil.java -showupdates BufferSize InFile
                 try {
-                    showUpdates(Integer.parseUnsignedInt(args[i+1]), args[i+2]);
+                    showupdates = true;
+                    BufferSize = Integer.parseUnsignedInt(args[i+1]);
+                    InFile = args[i+2];
                 } catch (NumberFormatException e) {
                     System.out.println("CrcUtil: The provided BufferSize argument does not have the appropriate format.");
+                    return;
                 }
             }
-            return;
+        }
+
+        if (InFile.equals("")) {
+            InFile = args[0];
+        }
+
+        if (BufferSize == -1) {
+            BufferSize = DEFAULT_BUFFER_SIZE;
         }
 
         try {
-            fin = new FileInputStream(args[0]);
+            fin = new FileInputStream(InFile);
         } catch (FileNotFoundException e) {
             System.out.println("CrcUtil: The system cannot find the file specified.");
             return;
@@ -115,17 +133,32 @@ public class CrcUtil {
 
         try {
             crc32 = new CRC32();
-            buffer = new byte[DEFAULT_BUFFER_SIZE];
-            i = fin.read(buffer);
-            while (i != -1) {
-                crc32.update(buffer, 0, i);
-                i = fin.read(buffer);
+            buf = new byte[BufferSize];
+
+            System.out.printf(
+                    (showupdates ? "Incremental " : "") + "CRC32 checksum of %s:\n", InFile);
+
+            if (showupdates) {
+                int upd;
+
+                upd = 0;
+                i = fin.read(buf);
+                while (i != -1) {
+                    crc32.update(buf, 0, i);
+                    System.out.printf("Update %d = %x\n", upd, crc32.getValue());
+                    upd++;
+                    i = fin.read(buf);
+                }
+            } else {
+                i = fin.read(buf);
+                while (i != -1) {
+                    crc32.update(buf, 0, i);
+                    i = fin.read(buf);
+                }
+                System.out.printf("%x\n", crc32.getValue());
             }
-            System.out.printf("""
-                              CRC32 checksum of %s:
-                              %x
-                              CrcUtil: Command completed successfully.
-                              """, args[0], crc32.getValue());
+            System.out.println(
+                    "CrcUtil: " + (showupdates ? "-showupdates command " : "Command ") + "completed successfully");
         } catch (IOException e) {
             System.out.println("CrcUtil: The system cannot read from the specified device.");
         }
@@ -235,52 +268,6 @@ public class CrcUtil {
                               %x
                               CrcUtil: -s command completed successfully.
                               """, str, crc32.getValue());
-        }
-    }
-
-    /**
-     * Computes the checksum incrementally across several segments
-     *
-     * @param bufSize the size (or length) of one segment
-     * @param inFile  the file to checksum
-     */
-    private static void showUpdates(int bufSize, String inFile) {
-        int i;
-        int j;
-        CRC32 crc32;
-        byte[] buffer;
-        FileInputStream fin;
-
-        try {
-            fin = new FileInputStream(inFile);
-        } catch (FileNotFoundException e) {
-            System.out.println("CrcUtil: The system cannot find the file specified.");
-            return;
-        }
-
-        try {
-            crc32 = new CRC32();
-            buffer = new byte[bufSize];
-
-            System.out.printf("Incremental CRC32 checksum of %s:\n", inFile);
-
-            i = 0;
-            j = fin.read(buffer);
-            while (j != -1) {
-                crc32.update(buffer, 0, j);
-                System.out.printf("Update %d = %x\n", i, crc32.getValue());
-                i++;
-                j = fin.read(buffer);
-            }
-            System.out.println("CrcUtil: -showupdates command completed successfully");
-        } catch (IOException e) {
-            System.out.println("CrcUtil: The system cannot read from the specified device.");
-        }
-
-        try {
-            fin.close();
-        } catch (IOException e) {
-            System.out.println("CrcUtil: The input file could not be closed.");
         }
     }
 
