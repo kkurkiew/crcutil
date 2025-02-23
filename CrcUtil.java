@@ -45,10 +45,21 @@ public class CrcUtil {
     private static final int DEFAULT_BUFFER_SIZE = 32768;
 
     /**
+     * Minimum buffer size
+     */
+    private static final int MIN_BUFFER_SIZE = 1;
+
+    /**
+     * Maximum buffer size
+     */
+    private static final int MAX_BUFFER_SIZE = 2147483645;
+
+    /**
      * Entry point
      */
     public static void main(String[] args) {
         int i;
+        int BufferSize;
 
         if (args.length == 0) {
             usage(false);
@@ -95,7 +106,14 @@ public class CrcUtil {
                 crcFile(true, DEFAULT_BUFFER_SIZE, args[i+1]);
             } else {  // java CrcUtil.java -showupdates BufferSize InFile
                 try {
-                    crcFile(true, Integer.parseUnsignedInt(args[i+1]), args[i+2]);
+                    BufferSize = Integer.parseUnsignedInt(args[i+1]);
+                    if (BufferSize < MIN_BUFFER_SIZE || BufferSize > MAX_BUFFER_SIZE) {
+                        System.out.printf(
+                                "CrcUtil: BufferSize should be an unsigned integer in the range of %d through %d.\n",
+                                        MIN_BUFFER_SIZE, MAX_BUFFER_SIZE);
+                    } else {
+                        crcFile(true, BufferSize, args[i+2]);
+                    }
                 } catch (NumberFormatException e) {
                     System.out.println("CrcUtil: The provided BufferSize argument does not have the appropriate format.");
                 }
@@ -122,7 +140,7 @@ public class CrcUtil {
                            -s String                  -- Checksum string
                            -showupdates [BufferSize]  -- Process BufferSize bytes at a time
                          
-                         BufferSize defaults to 32768
+                         BufferSize ranges from 1 to 2147483645 (default: 32768)
                          
                          CrcUtil -?              -- Display help text
                          
