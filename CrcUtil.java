@@ -55,11 +55,27 @@ public class CrcUtil {
     private static final int MAX_BUFFER_SIZE = 2147483645;
 
     /**
+     * Default bytes per row
+     */
+    private static final int DEFAULT_BYTES_PER_ROW = 24;
+
+    /**
+     * Minimum bytes per row
+     */
+    private static final int MIN_BYTES_PER_ROW = 1;
+
+    /**
+     * Maximum bytes per row
+     */
+    private static final int MAX_BYTES_PER_ROW = 65;
+
+    /**
      * Entry point
      */
     public static void main(String[] args) {
         int i;
         int BufferSize;
+        int BytesPerRow;
 
         if (args.length == 0) {
             usage(false);
@@ -87,6 +103,44 @@ public class CrcUtil {
                 i++;
             }
             crcString(args[i+1], false);
+            return;
+        }
+
+        if (Arrays.asList(args).contains("-showbytes")) {
+            i = 0;
+            while (!args[i].equals("-showbytes")) {
+                i++;
+            }
+            if (i + 1 == args.length) {  // java CrcUtil.java -showbytes
+                System.out.print("""
+                                 Expected at least 1 argument, received 0
+                                 CrcUtil: Missing argument
+                                 
+                                 """);
+                usage(false);
+            } else if (i + 2 == args.length) {  // java CrcUtil.java -showbytes InFile
+                showBytes(DEFAULT_BYTES_PER_ROW, args[i+1]);
+            } else if (i + 3 == args.length) {  // java CrcUtil.java -showbytes BytesPerRow InFile
+                try {
+                    BytesPerRow = Integer.parseUnsignedInt(args[i+1]);
+                    if (BytesPerRow < MIN_BYTES_PER_ROW || BytesPerRow > MAX_BYTES_PER_ROW) {
+                        System.out.printf(
+                                "CrcUtil: BytesPerRow should be an unsigned integer in the range of %d through %d.\n",
+                                        MIN_BYTES_PER_ROW, MAX_BYTES_PER_ROW);
+                    } else {
+                        showBytes(BytesPerRow, args[i+2]);
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("CrcUtil: The provided BytesPerRow argument does not have the appropriate format.");
+                }
+            } else {
+                System.out.printf("""
+                                  Expected no more than 2 arguments, received %d
+                                  CrcUtil: Too many arguments
+                                  
+                                  """, args.length - i - 1);
+                usage(false);
+            }
             return;
         }
 
@@ -138,9 +192,11 @@ public class CrcUtil {
                            -t                -- Run time trial
                            -x                -- Run test script
                            -s String                  -- Checksum string
-                           -showupdates [BufferSize]  -- Process BufferSize bytes at a time
+                           -showbytes [BytesPerRow]   -- Dump raw bytes
+                                     BytesPerRow ranges from 1 to 65 (default: 24)
                          
-                         BufferSize ranges from 1 to 2147483645 (default: 32768)
+                           -showupdates [BufferSize]  -- Process BufferSize bytes at a time
+                                     BufferSize ranges from 1 to 2147483645 (default: 32768)
                          
                          CrcUtil -?              -- Display help text
                          
@@ -223,6 +279,50 @@ public class CrcUtil {
                               %x
                               CrcUtil: -s command completed successfully.
                               """, str, crc32.getValue());
+        }
+    }
+
+    /**
+     * Prints the hexadecimal view of the input file to standard output
+     *
+     * @param BytesPerRow number of bytes per row
+     * @param             InFile the input file
+     */
+    private static void showBytes(int BytesPerRow, String InFile) {
+        int     i;
+        byte[]  buf;
+        int     read;
+        FileInputStream  fin;
+
+        try {
+            fin = new FileInputStream(InFile);
+        } catch (FileNotFoundException e) {
+            System.out.println("CrcUtil: The system cannot find the file specified.");
+            return;
+        }
+
+        try {
+            i = 0;
+            buf = new byte[BytesPerRow];
+            read = fin.read(buf);
+            System.out.printf("Bytes of %s:\n", InFile);
+            while (read != -1) {
+                while (i < read) {
+                    System.out.printf("%02x ", buf[i++]);
+                }
+                System.out.print("\n");
+                read = fin.read(buf);
+                i = 0;
+            }
+            System.out.println("CrcUtil: -showbytes command completed successfully");
+        } catch (IOException e) {
+            System.out.println("CrcUtil: The system cannot read from the specified device.");
+        }
+
+        try {
+            fin.close();
+        } catch (IOException e) {
+            System.out.println("CrcUtil: The input file could not be closed.");
         }
     }
 
